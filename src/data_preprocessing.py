@@ -50,3 +50,30 @@ def preprocessing_adult(df):
     df['race'] = df['race'].apply(lambda x: 'White' if x == 'White' else 'Non-White')
 
     return df
+
+
+def preprocessing_compas(df):
+    violent = {'assault','battery','murder','manslaughter'}
+    property = {'theft','burglary','robbery','arson','trespass'}
+    drug = {'possession','traff','deliver','cocaine', 'heroin','marijuana','meth','opioid'}
+    alcohol_dui = {'dui','dwi','alcohol','intoxicated'}
+    weapons = {'weapon','firearm','gun','deadly'}
+    
+    def charge_group(x):
+        if not isinstance(x, str):
+            return 'Other'
+        txt = x.lower()
+        if any(k in txt for k in violent):
+            return 'Violent'
+        if any(k in txt for k in property):
+            return 'Property'
+        if any(k in txt for k in drug):
+            return 'Drug'
+        if any(k in txt for k in alcohol_dui):
+            return 'Alcohol_dui'
+        if any(k in txt for k in weapons):
+            return 'Weapons'
+        return 'Other'
+    df['c_charge_desc'] = df['c_charge_desc'].apply(charge_group)
+
+    return df
