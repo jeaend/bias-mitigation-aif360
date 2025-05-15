@@ -21,10 +21,15 @@ def load_adult_sex():
         na_values=[]
     )
 
-    # 2) Build a single DataFrame (features + label) 
     df = pd.DataFrame(ad.features, columns=ad.feature_names)
     df['label'] = ad.labels.ravel()
     
+    df.drop(    
+        ['workclass=Other', 'education=College', 'marital-status=Widowed', 'occupation=Unknown', 'relationship=Husband', 'race=Non-White', "native-country=Other"],
+        axis=1,
+        inplace=True
+    )
+
     return ad, df
 
 
@@ -47,10 +52,15 @@ def load_adult_race():
         na_values=[]
     )
 
-    # 2) Build a single DataFrame (features + label) 
     df = pd.DataFrame(ad.features, columns=ad.feature_names)
     df['label'] = ad.labels.ravel()
-    
+     
+    df.drop(    
+        ['workclass=Other', 'education=College', 'marital-status=Widowed', 'occupation=Unknown', 'relationship=Husband', 'sex=Female', "native-country=Other"],
+        axis=1,
+        inplace=True
+    )
+
     return ad, df
 
 def load_compas_sex(custom_preprocessing=preprocessing_compas):
@@ -68,7 +78,7 @@ def load_compas_sex(custom_preprocessing=preprocessing_compas):
     df['race']  = ds.protected_attributes[:, 0]
 
     df.drop(    
-        ['c_charge_desc=Other', 'c_charge_degree=F'],
+        ['c_charge_desc=Other', 'c_charge_degree=F', 'race=Other'],
         axis=1,
         inplace=True
     )
