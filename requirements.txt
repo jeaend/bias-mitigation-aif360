@@ -1,0 +1,6 @@
+aif360
+scikit-learn 
+pandas 
+numpy
+matplotlib
+'aif360[Reductions]'
