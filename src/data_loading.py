@@ -66,7 +66,7 @@ def load_adult_race():
 def load_compas_sex(custom_preprocessing=preprocessing_compas):
     ds = CompasDataset(
         protected_attribute_names=['sex'],
-        privileged_classes=[['Male']],
+        privileged_classes=[['Female']],
         features_to_drop=['age_cat'],
         categorical_features=[
             'race', 'c_charge_degree', 'c_charge_desc'
