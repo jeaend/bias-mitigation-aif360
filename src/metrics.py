@@ -3,10 +3,10 @@ from aif360.datasets import BinaryLabelDataset
 from aif360.metrics import BinaryLabelDatasetMetric, ClassificationMetric
 from sklearn.metrics import accuracy_score, f1_score
 
-COL_BAR    = '#666666'    # medium gray for bars
-BAND_FAIR  = '#d2f8d2'    # soft green for fair region
-COL_MIT    = '#cccccc'    # light gray
-BAND_BIAS  = '#f8d2d2'    # soft red for bias regions
+COL_BAR    = "#C9C6C6"    
+BAND_FAIR  = "#b4dcb4"    
+COL_MIT    = "#afadad"    
+BAND_BIAS  = "#d89494"    
 ALPHA_BAND = 0.4
 
 def compute_metrics(
@@ -66,7 +66,7 @@ def compute_metrics(
     }
 
 
-def viz_metrics_2x3(metrics_dataframe_agg, label='baseline'):
+def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
     metrics = ['accuracy', 'f1_score', 'SPD', 'DI', 'EOD', 'AOD']
     titles  = [
         'Accuracy',
@@ -99,6 +99,8 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='baseline'):
     }
 
     fig, axes = plt.subplots(2, 3, figsize=(12, 8), sharey=False)
+    if title:
+        fig.suptitle(title, fontsize=14)
     axes = axes.flatten()
     bar_width = 0.3
 
@@ -117,14 +119,12 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='baseline'):
             ax.axhspan(lo_f, hi_f, color=BAND_FAIR, alpha=ALPHA_BAND)
             ax.axhspan(lo_y, lo_f, color=BAND_BIAS, alpha=ALPHA_BAND)
             ax.axhspan(hi_f, hi_y, color=BAND_BIAS, alpha=ALPHA_BAND)
-            if metric=='DI':
+
+            if metric == 'DI':
                 ax.axhline(1, color='black')
-                ax.axhline(lo_f, linestyle='--')
-                ax.axhline(hi_f, linestyle='--')
             else:
                 ax.axhline(0, color='black')
-                ax.axhline(0.5, linestyle='--')
-                ax.axhline(-0.5, linestyle='--')
+
             ax.bar([''], [m], yerr=[s], capsize=4, color=COL_BAR, width=bar_width)
             va = 'bottom' if m >= 0 else 'top'
             y_text = m + y_off if m >= 0 else m - y_off
@@ -145,7 +145,8 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='baseline'):
     plt.subplots_adjust(left=0.05, right=0.95, top=0.93, bottom=0.1, hspace=0.4, wspace=0.3)
     plt.show()
 
-def compare_viz_metrics_2x3(df_base, df_mit, label1='Baseline', label2='Mitigation'):
+
+def compare_viz_metrics_2x3(df_base, df_mit, label1='Baseline', label2='Mitigation', title=None):
     metrics = ['accuracy', 'f1_score', 'SPD', 'DI', 'EOD', 'AOD']
     titles  = [
         'Accuracy', 'F1 Score', 'Statistical Parity\nDifference',
@@ -166,6 +167,8 @@ def compare_viz_metrics_2x3(df_base, df_mit, label1='Baseline', label2='Mitigati
               'Disparate\nImpact','Equal Opportunity\nDifference','Average Odds\nDifference']
 
     fig, axes = plt.subplots(2,3,figsize=(12,8))
+    if title:
+        fig.suptitle(title, fontsize=14)
     axes = axes.flatten()
     bar_w = 0.4
     gap = 0.05
