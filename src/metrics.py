@@ -74,7 +74,6 @@ def compute_metrics(
 
 
 def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
-    metrics = ['accuracy', 'f1_score', 'SPD', 'DI', 'EOD', 'AOD']
     titles  = [
         'Accuracy',
         'F1 Score',
@@ -84,8 +83,8 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
         'Average Odds\nDifference'
     ]
 
-    mean_vals = metrics_dataframe_agg.loc['mean', metrics]
-    std_vals  = metrics_dataframe_agg.loc['std',  metrics]
+    mean_vals = metrics_dataframe_agg.loc['mean', METRICS]
+    std_vals  = metrics_dataframe_agg.loc['std',  METRICS]
 
     fair_bands = {'SPD':(-0.1,0.1), 'DI':(0.8,1.25), 'EOD':(-0.1,0.1), 'AOD':(-0.1,0.1)}
     ylims = {
@@ -111,7 +110,7 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
     axes = axes.flatten()
     bar_width = 0.3
 
-    for ax, metric, title in zip(axes, metrics, titles):
+    for ax, metric, title in zip(axes, METRICS, titles):
         m = mean_vals[metric]
         s = std_vals[metric]
         lo_y, hi_y = ylims[metric]
@@ -152,9 +151,7 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
     plt.subplots_adjust(left=0.05, right=0.95, top=0.93, bottom=0.1, hspace=0.4, wspace=0.3)
     plt.show()
 
-
 def compare_viz_metrics_2x3(df_base, df_mit, label1='Baseline', label2='Mitigation', title=None):
-    metrics = ['accuracy', 'f1_score', 'SPD', 'DI', 'EOD', 'AOD']
     titles  = [
         'Accuracy', 'F1 Score', 'Statistical Parity\nDifference',
         'Disparate\nImpact', 'Equal Opportunity\nDifference', 'Average Odds\nDifference'
@@ -170,8 +167,6 @@ def compare_viz_metrics_2x3(df_base, df_mit, label1='Baseline', label2='Mitigati
         'SPD':[-1,-0.5,0,0.5,1], 'DI':[0,0.5,1,1.25,1.5],
         'EOD':[-1,-0.5,0,0.5,1], 'AOD':[-1,-0.5,0,0.5,1]
     }
-    titles = ['Accuracy','F1 Score','Statistical Parity\nDifference',
-              'Disparate\nImpact','Equal Opportunity\nDifference','Average Odds\nDifference']
 
     fig, axes = plt.subplots(2,3,figsize=(12,8))
     if title:
@@ -181,30 +176,46 @@ def compare_viz_metrics_2x3(df_base, df_mit, label1='Baseline', label2='Mitigati
     gap = 0.05
     x_pos = [-(bar_w/2 + gap/2), (bar_w/2 + gap/2)]
 
-    for ax, metric, title in zip(axes, metrics, titles):
+    for ax, metric, ttl in zip(axes, METRICS, titles):
         lo, hi = ylims[metric]
-        ax.set_title(title)
+        ax.set_title(ttl)
         ax.set_ylim(lo, hi)
         ax.set_yticks(yticks[metric])
 
-        # Fairness bands (shaded only)
+        # fairness bands
         if metric not in ('accuracy','f1_score'):
             lf, hf = fair_bands[metric]
             ax.axhspan(lf, hf, color=BAND_FAIR, alpha=ALPHA_BAND)
             ax.axhspan(lo, lf, color=BAND_BIAS, alpha=ALPHA_BAND)
             ax.axhspan(hf, hi, color=BAND_BIAS, alpha=ALPHA_BAND)
-            # Only draw the central baseline line
             base_line = 1 if metric=='DI' else 0
             ax.axhline(base_line, color='black')
 
-        # Bars
+        # bars
         mb, sb = df_base.loc['mean', metric], df_base.loc['std', metric]
         mm, sm = df_mit.loc['mean', metric], df_mit.loc['std', metric]
-        ax.bar(x_pos[0], mb, bar_w, yerr=sb, capsize=4, color=COL_BAR)
-        ax.bar(x_pos[1], mm, bar_w, yerr=sm, capsize=4, color=COL_MIT)
+        ax.bar(x_pos, [mb, mm], bar_w, yerr=[sb, sm], capsize=4,
+               color=[COL_BAR, COL_MIT])
 
-        ax.set_xticks(x_pos)
-        ax.set_xticklabels([label1, label2])
+        # annotate each bar
+        pad = 0.02*(hi - lo)
+        for x, val, err in zip(x_pos, [mb, mm], [sb, sm]):
+            y_above = val + err + pad
+            if y_above > hi:
+                y = val - err - pad
+                va = 'top'
+            else:
+                y = y_above
+                va = 'bottom'
+
+            ax.text(
+                x, y,
+                f"{val:.2f}\n±{err:.2f}",
+                ha='center', va=va, fontsize=10,
+                clip_on=False
+            )
+
+        ax.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
 
     plt.subplots_adjust(wspace=0.4, hspace=0.4, bottom=0.1)
     plt.show()
