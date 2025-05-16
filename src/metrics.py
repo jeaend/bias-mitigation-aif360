@@ -14,7 +14,7 @@ ALPHA_BAND = 0.4
 METRICS = ['accuracy', 'f1_score', 'SPD', 'DI', 'EOD', 'AOD']
 AGG_OUT_PATH = '../../reports/agg_metrics.csv'
 RAW_OUT_PATH = '../../reports/compas_raw_metrics.csv'
-KEYS = ['Mitigation', 'Sensitive Attribute']
+KEYS = ['Dataset', 'Sensitive Attribute', 'Mitigation']
 
 def compute_metrics(
     test_df,
@@ -210,13 +210,17 @@ def compare_viz_metrics_2x3(df_base, df_mit, label1='Baseline', label2='Mitigati
     plt.show()
 
 
-def save_agg_metrics(race_agg_df, sex_agg_df, mitigation_name):
+def save_agg_metrics(dataset_name,mitigation_name, race_agg_df, sex_agg_df):
     agg_dfs = {'race': race_agg_df, 'sex': sex_agg_df}
     rows = []
     for attr, df in agg_dfs.items():
         mean = df.loc['mean', METRICS]
         std  = df.loc['std',  METRICS]
-        row = {'Mitigation': mitigation_name, 'Sensitive Attribute': attr}
+        row = {
+            'Dataset': dataset_name,
+            'Sensitive Attribute': attr,
+            'Mitigation': mitigation_name
+        }
         for m in METRICS:
             row[m]     = mean[m]
             row[f'{m}_std'] = std[m]
@@ -234,8 +238,7 @@ def save_agg_metrics(race_agg_df, sex_agg_df, mitigation_name):
 
     final.to_csv(AGG_OUT_PATH, index=False)
 
-
-def save_raw_metrics(race_agg_df, sex_agg_df, mitigation_name):
+def save_raw_metrics(dataset_name, mitigation_name, race_agg_df, sex_agg_df):
     raw_dfs = {
         'race': race_agg_df,
         'sex':  sex_agg_df
@@ -244,8 +247,9 @@ def save_raw_metrics(race_agg_df, sex_agg_df, mitigation_name):
     raw_list = []
     for attr, df in raw_dfs.items():
         tmp = df.reset_index(drop=True).copy()
-        tmp['Mitigation'] = mitigation_name
+        tmp['Dataset'] = dataset_name
         tmp['Sensitive Attribute'] = attr
+        tmp['Mitigation'] = mitigation_name
         raw_list.append(tmp)
 
     raw_df = pd.concat(raw_list, ignore_index=True)
