@@ -1,7 +1,11 @@
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.linear_model import LogisticRegression
+import tensorflow.compat.v1 as tf
+from tensorflow.compat.v1 import reset_default_graph
 from aif360.algorithms.preprocessing import Reweighing
+from aif360.algorithms.inprocessing import AdversarialDebiasing
+from aif360.datasets import BinaryLabelDataset
 
 def get_default_model_pipeline():
     return Pipeline([
@@ -66,3 +70,69 @@ def reweighing_train_and_predict(
     y_pred = pipeline.predict(X_te)
     test_df = df.iloc[test_idx]
     return test_df, y_te, y_pred
+
+
+def adversial_debiasing_train_and_predict(
+    df,
+    train_idx,
+    test_idx,
+    protected,
+    privileged_value,
+    unprivileged_value,
+    privileged_groups,
+    unprivileged_groups,
+    scope_name='adv',
+    num_epochs=50,
+    batch_size=128,
+    adversary_loss_weight=0.1
+):
+    # Reset TF graph - start new session (to avoid "Variable … already exists")
+    reset_default_graph()
+    sess = tf.Session()
+
+    # 2) Split DF
+    train_df = df.iloc[train_idx].reset_index(drop=True)
+    test_df  = df.iloc[test_idx].reset_index(drop=True)
+
+    # 3) Wrap into AIF360 datasets
+    train_bld = BinaryLabelDataset(
+        df=train_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        favorable_label=1.0,
+        unfavorable_label=0.0,
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+    test_bld = BinaryLabelDataset(
+        df=test_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        favorable_label=1.0,
+        unfavorable_label=0.0,
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+
+    # 4) Instantiate & train the adversarial debiaser
+    adv = AdversarialDebiasing(
+        privileged_groups=privileged_groups,
+        unprivileged_groups=unprivileged_groups,
+        scope_name=scope_name,
+        debias=True,
+        sess=sess,
+        num_epochs=num_epochs,
+        batch_size=batch_size,
+        adversary_loss_weight=adversary_loss_weight
+    )
+    adv.fit(train_bld)
+
+    # 5) Predict & extract labels
+    pred_bld = adv.predict(test_bld)
+    y_test   = test_df['label'].values
+    y_pred   = pred_bld.labels.ravel()
+
+    # 6) Clean up sess
+    sess.close()
+
+    return test_df, y_test, y_pred
