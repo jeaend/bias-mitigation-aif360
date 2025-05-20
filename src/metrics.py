@@ -285,34 +285,22 @@ def save_raw_metrics(dataset_name, mitigation_name, race_agg_df, sex_agg_df):
 
 def best_hyperparameter_advdeb(results_df: pd.DataFrame) -> pd.Series:
     """
-    From a DataFrame of hyperparameter results (with columns
-    ['acc_mean','acc_std','SPD_mean','SPD_std','DI_mean','DI_std',
-     'EOD_mean','EOD_std','AOD_mean','AOD_std', ...]),
-    filters to the rows satisfying:
-      - 0.8 ≤ DI_mean ≤ 1.25
-      - |SPD_mean| ≤ 0.1
-      - |EOD_mean| ≤ 0.1
-      - |AOD_mean| ≤ 0.1
-    Then picks the single best row by:
-      1) highest acc_mean
-      2) lowest acc_std
-      3) lowest DI_std
+    From a DataFrame of hyperparameter results (with columns including
+    ['acc_mean','SPD_mean','DI_mean', ...]),
+    computes a simple fairness score:
+        fairness_score = |SPD_mean| + |DI_mean - 1|
+    and then selects the row with:
+      1) highest acc_mean 
+      2) lowest fairness_score
     """
-    # 1) Filter
-    fair = results_df.loc[
-        (results_df['DI_mean']  >= DI_LO) & (results_df['DI_mean']  <= DI_HI) &
-        (results_df['SPD_mean'].abs() <= SPD_MAX) &
-        (results_df['EOD_mean'].abs() <= EOD_MAX) &
-        (results_df['AOD_mean'].abs() <= AOD_MAX)
-    ].copy()
+    df = results_df.copy()
+    # 1) Compute fairness score
+    df['fairness_score'] = df['SPD_mean'].abs() + (df['DI_mean'] - 1.0).abs()
 
-    if fair.empty:
-        raise ValueError("No configurations meet all fairness bounds, check manually")
-
-    # 2) Sort and select with DI_std tie-breaker
-    best = fair.sort_values(
-        by=['acc_mean', 'acc_std', 'DI_std'],
-        ascending=[False, True, True]
+    # 2) Sort by fairness_score ascending, then acc_mean descending
+    best = df.sort_values(
+        by=['fairness_score', 'acc_mean'],
+        ascending=[True, False]
     ).iloc[0]
 
     return best
