@@ -4,7 +4,7 @@ from sklearn.linear_model import LogisticRegression
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import reset_default_graph
 from aif360.algorithms.preprocessing import Reweighing
-from aif360.algorithms.inprocessing import AdversarialDebiasing
+from aif360.algorithms.inprocessing import AdversarialDebiasing, PrejudiceRemover
 from aif360.datasets import BinaryLabelDataset
 
 def get_default_model_pipeline():
@@ -134,5 +134,43 @@ def adversial_debiasing_train_and_predict(
 
     # 6) Clean up sess
     sess.close()
+
+    return test_df, y_test, y_pred
+
+def prejudice_remover_train_and_predict(
+    df,
+    train_idx,
+    test_idx,
+    protected: str,
+    privileged_value: float,
+    unprivileged_value: float,
+    eta: float = 25.0
+):
+    train_df = df.iloc[train_idx].reset_index(drop=True)
+    test_df  = df.iloc[test_idx].reset_index(drop=True)
+
+    train_bld = BinaryLabelDataset(
+        df=train_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+    test_bld = BinaryLabelDataset(
+        df=test_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+
+    # Train PrejudiceRemover (η = 25.0 default) 
+    pr = PrejudiceRemover(eta=eta, sensitive_attr=protected)
+    pr = pr.fit(train_bld)
+
+    pred_bld = pr.predict(test_bld)
+
+    y_test = test_bld.labels.ravel()
+    y_pred = pred_bld.labels.ravel()
 
     return test_df, y_test, y_pred
