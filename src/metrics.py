@@ -16,6 +16,11 @@ AGG_OUT_PATH = '../../reports/agg_metrics.csv'
 RAW_OUT_PATH = '../../reports/compas_raw_metrics.csv'
 KEYS = ['Dataset', 'Sensitive Attribute', 'Mitigation']
 
+DI_LO, DI_HI = 0.8, 1.25
+SPD_MAX = 0.1
+EOD_MAX = 0.1
+AOD_MAX = 0.1
+
 def compute_metrics(
     test_df,
     y_true,
@@ -277,3 +282,36 @@ def save_raw_metrics(dataset_name, mitigation_name, race_agg_df, sex_agg_df):
         final = raw_df
 
     final.to_csv(RAW_OUT_PATH, index=False)
+
+def best_hyperparameter_advdeb(results_df: pd.DataFrame) -> pd.Series:
+    """
+    From a DataFrame of hyperparam results (with columns
+    ['acc_mean','acc_std','SPD_mean','SPD_std','DI_mean','DI_std',
+     'EOD_mean','EOD_std','AOD_mean','AOD_std', ...]),
+    filters to the rows satisfying:
+      - 0.8 ≤ DI_mean ≤ 1.25
+      - |SPD_mean| ≤ 0.1
+      - |EOD_mean| ≤ 0.1
+      - |AOD_mean| ≤ 0.1
+    Then picks the single best row by:
+      1) highest acc_mean
+      2) lowest acc_std
+    """
+    # 1) Filter
+    fair = results_df.loc[
+        (results_df['DI_mean']  >= DI_LO) & (results_df['DI_mean']  <= DI_HI) &
+        (results_df['SPD_mean'].abs() <= SPD_MAX) &
+        (results_df['EOD_mean'].abs() <= EOD_MAX) &
+        (results_df['AOD_mean'].abs() <= AOD_MAX)
+    ].copy()
+
+    if fair.empty:
+        raise ValueError("No configurations meet all fairness bounds, check manually")
+
+    # 2) Sort and select
+    best = fair.sort_values(
+        by=['acc_mean','acc_std'],
+        ascending=[False, True]
+    ).iloc[0]
+
+    return best
