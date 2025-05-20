@@ -285,7 +285,7 @@ def save_raw_metrics(dataset_name, mitigation_name, race_agg_df, sex_agg_df):
 
 def best_hyperparameter_advdeb(results_df: pd.DataFrame) -> pd.Series:
     """
-    From a DataFrame of hyperparam results (with columns
+    From a DataFrame of hyperparameter results (with columns
     ['acc_mean','acc_std','SPD_mean','SPD_std','DI_mean','DI_std',
      'EOD_mean','EOD_std','AOD_mean','AOD_std', ...]),
     filters to the rows satisfying:
@@ -296,6 +296,7 @@ def best_hyperparameter_advdeb(results_df: pd.DataFrame) -> pd.Series:
     Then picks the single best row by:
       1) highest acc_mean
       2) lowest acc_std
+      3) lowest DI_std
     """
     # 1) Filter
     fair = results_df.loc[
@@ -308,10 +309,10 @@ def best_hyperparameter_advdeb(results_df: pd.DataFrame) -> pd.Series:
     if fair.empty:
         raise ValueError("No configurations meet all fairness bounds, check manually")
 
-    # 2) Sort and select
+    # 2) Sort and select with DI_std tie-breaker
     best = fair.sort_values(
-        by=['acc_mean','acc_std'],
-        ascending=[False, True]
+        by=['acc_mean', 'acc_std', 'DI_std'],
+        ascending=[False, True, True]
     ).iloc[0]
 
     return best
