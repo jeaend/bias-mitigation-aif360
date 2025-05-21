@@ -5,6 +5,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import reset_default_graph
 from aif360.algorithms.preprocessing import Reweighing
 from aif360.algorithms.inprocessing import AdversarialDebiasing, PrejudiceRemover
+from aif360.algorithms.postprocessing import EqOddsPostprocessing
 from aif360.datasets import BinaryLabelDataset
 
 def get_default_model_pipeline():
@@ -174,3 +175,58 @@ def prejudice_remover_train_and_predict(
     y_pred = pred_bld.labels.ravel()
 
     return test_df, y_test, y_pred
+
+def eq_odds_postprocessing_train_and_predict(
+    df,
+    train_idx,
+    test_idx,
+    protected: str,
+    privileged_value: float,
+    unprivileged_value: float,
+    seed: int = 42
+):
+    train_df = df.iloc[train_idx].reset_index(drop=True)
+    test_df  = df.iloc[test_idx].reset_index(drop=True)
+
+    X_train = train_df.drop(columns=['label', protected])
+    y_train = train_df['label'].values
+    X_test  = test_df.drop(columns=['label', protected])
+    y_test  = test_df['label'].values
+
+    pipeline = get_default_model_pipeline()
+    pipeline.fit(X_train, y_train)
+    y_train_pred = pipeline.predict(X_train)
+    y_test_pred  = pipeline.predict(X_test)
+
+    train_bld = BinaryLabelDataset(
+        df=train_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+    test_bld  = BinaryLabelDataset(
+        df=test_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+
+    train_pred = train_bld.copy(deepcopy=True)
+    train_pred.labels = y_train_pred.reshape(-1, 1)
+    test_pred  = test_bld.copy(deepcopy=True)
+    test_pred.labels  = y_test_pred.reshape(-1, 1)
+
+    # e) Fit Equalized Odds post‐processor
+    eq = EqOddsPostprocessing(
+        privileged_groups=[{protected: privileged_value}],
+        unprivileged_groups=[{protected: unprivileged_value}],
+        seed=seed
+    )
+    eq = eq.fit(train_bld, train_pred)
+
+    post_bld = eq.predict(test_pred)
+    y_pred_post = post_bld.labels.ravel()
+
+    return test_df, y_test, y_pred_post
