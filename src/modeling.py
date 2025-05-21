@@ -3,7 +3,7 @@ from sklearn.preprocessing import RobustScaler
 from sklearn.linear_model import LogisticRegression
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import reset_default_graph
-from aif360.algorithms.preprocessing import Reweighing
+from aif360.algorithms.preprocessing import Reweighing, DisparateImpactRemover
 from aif360.algorithms.inprocessing import AdversarialDebiasing, PrejudiceRemover
 from aif360.algorithms.postprocessing import EqOddsPostprocessing, RejectOptionClassification
 from aif360.datasets import BinaryLabelDataset
@@ -72,6 +72,45 @@ def reweighing_train_and_predict(
 
     y_pred = pipeline.predict(X_te)
     test_df = df.iloc[test_idx]
+    return test_df, y_te, y_pred
+
+def disparate_impact_remover_train_and_predict(
+    ds,
+    df,
+    train_idx,
+    test_idx,
+    protected,
+    repair_level=1.0,
+    pipeline=None
+):
+    train_bld = ds.subset(train_idx)
+    test_bld  = ds.subset(test_idx)
+
+    direr_train = DisparateImpactRemover(
+        repair_level=repair_level,
+        sensitive_attribute=protected
+    )
+    train_transf = direr_train.fit_transform(train_bld)
+
+    direr_test = DisparateImpactRemover(
+        repair_level=repair_level,
+        sensitive_attribute=protected
+    )
+    test_transf = direr_test.fit_transform(test_bld)
+
+    X_tr = train_transf.features
+    y_tr = train_transf.labels.ravel()
+
+    X_te = test_transf.features
+    y_te = test_transf.labels.ravel()
+
+    if pipeline is None:
+        pipeline = get_default_model_pipeline()
+    pipeline.fit(X_tr, y_tr)
+
+    y_pred = pipeline.predict(X_te)
+    test_df = df.iloc[test_idx]
+
     return test_df, y_te, y_pred
 
 ################ INPROCESSING
