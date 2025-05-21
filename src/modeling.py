@@ -7,6 +7,7 @@ from aif360.algorithms.preprocessing import Reweighing
 from aif360.algorithms.inprocessing import AdversarialDebiasing, PrejudiceRemover
 from aif360.algorithms.postprocessing import EqOddsPostprocessing
 from aif360.datasets import BinaryLabelDataset
+import pandas as pd
 
 def get_default_model_pipeline():
     return Pipeline([
@@ -87,17 +88,25 @@ def adversial_debiasing_train_and_predict(
     batch_size=128,
     adversary_loss_weight=0.1
 ):
-    # Reset TF graph - start new session (to avoid "Variable … already exists")
-    reset_default_graph()
-    sess = tf.Session()
-
-    # 2) Split DF
     train_df = df.iloc[train_idx].reset_index(drop=True)
     test_df  = df.iloc[test_idx].reset_index(drop=True)
 
-    # 3) Wrap into AIF360 datasets
+    # 2) Identify feature columns (exclude label & protected)
+    feature_cols = [c for c in df.columns if c not in ('label', protected)]
+
+    # 3) Scale numeric features
+    scaler = RobustScaler()
+    train_vals = scaler.fit_transform(train_df[feature_cols])
+    test_vals  = scaler.transform(test_df[feature_cols])
+
+    # 4) Rebuild DataFrames for AIF360
+    train_scaled = train_df[[protected, 'label']].copy().reset_index(drop=True)
+    train_scaled[feature_cols] = train_vals
+    test_scaled  = test_df[[protected, 'label']].copy().reset_index(drop=True)
+    test_scaled[feature_cols]  = test_vals
+
     train_bld = BinaryLabelDataset(
-        df=train_df,
+        df=train_scaled,
         label_names=['label'],
         protected_attribute_names=[protected],
         favorable_label=1.0,
@@ -106,7 +115,7 @@ def adversial_debiasing_train_and_predict(
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
     test_bld = BinaryLabelDataset(
-        df=test_df,
+        df=test_scaled,
         label_names=['label'],
         protected_attribute_names=[protected],
         favorable_label=1.0,
@@ -115,7 +124,9 @@ def adversial_debiasing_train_and_predict(
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
 
-    # 4) Instantiate & train the adversarial debiaser
+    # 6) Train Adversarial Debiasing
+    reset_default_graph()
+    sess = tf.Session()
     adv = AdversarialDebiasing(
         privileged_groups=privileged_groups,
         unprivileged_groups=unprivileged_groups,
@@ -128,14 +139,12 @@ def adversial_debiasing_train_and_predict(
     )
     adv.fit(train_bld)
 
-    # 5) Predict & extract labels
+    # 7) Predict & extract labels
     pred_bld = adv.predict(test_bld)
     y_test   = test_df['label'].values
     y_pred   = pred_bld.labels.ravel()
 
-    # 6) Clean up sess
     sess.close()
-
     return test_df, y_test, y_pred
 
 def prejudice_remover_train_and_predict(
@@ -147,25 +156,43 @@ def prejudice_remover_train_and_predict(
     unprivileged_value: float,
     eta: float = 25.0
 ):
+    # 1) Split raw DataFrame
     train_df = df.iloc[train_idx].reset_index(drop=True)
     test_df  = df.iloc[test_idx].reset_index(drop=True)
 
+    # 2) Identify feature columns (exclude label and protected attr)
+    feature_cols = [c for c in df.columns if c not in ('label', protected)]
+
+    # 3) Scale numeric features
+    scaler = RobustScaler()
+    train_scaled_vals = scaler.fit_transform(train_df[feature_cols])
+    test_scaled_vals  = scaler.transform(test_df[feature_cols])
+
+    # 4) Rebuild scaled DataFrames for AIF360
+    train_scaled_df = pd.DataFrame(train_scaled_vals, columns=feature_cols)
+    train_scaled_df['label'] = train_df['label'].values
+    train_scaled_df[protected] = train_df[protected].values
+
+    test_scaled_df = pd.DataFrame(test_scaled_vals, columns=feature_cols)
+    test_scaled_df['label'] = test_df['label'].values
+    test_scaled_df[protected] = test_df[protected].values
+
     train_bld = BinaryLabelDataset(
-        df=train_df,
+        df=train_scaled_df,
         label_names=['label'],
         protected_attribute_names=[protected],
         privileged_protected_attributes=[[privileged_value]],
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
     test_bld = BinaryLabelDataset(
-        df=test_df,
+        df=test_scaled_df,
         label_names=['label'],
         protected_attribute_names=[protected],
         privileged_protected_attributes=[[privileged_value]],
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
 
-    # Train PrejudiceRemover (η = 25.0 default) 
+    # 6) Train PrejudiceRemover (in-processing)
     pr = PrejudiceRemover(eta=eta, sensitive_attr=protected)
     pr = pr.fit(train_bld)
 
