@@ -4,3 +4,4 @@ pandas
 numpy
 matplotlib
 'aif360[Reductions]'
+BlackBoxAuditing
