@@ -5,7 +5,7 @@ import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import reset_default_graph
 from aif360.algorithms.preprocessing import Reweighing
 from aif360.algorithms.inprocessing import AdversarialDebiasing, PrejudiceRemover
-from aif360.algorithms.postprocessing import EqOddsPostprocessing
+from aif360.algorithms.postprocessing import EqOddsPostprocessing, RejectOptionClassification
 from aif360.datasets import BinaryLabelDataset
 import pandas as pd
 
@@ -33,6 +33,7 @@ def train_and_predict(df, feature_cols, train_idx, test_idx, pipeline=None):
     test_df = df.iloc[test_idx]
     return test_df, y_test, y_pred
 
+################ PREPROCESSING
 
 def reweighing_train_and_predict(
     ds,
@@ -73,6 +74,7 @@ def reweighing_train_and_predict(
     test_df = df.iloc[test_idx]
     return test_df, y_te, y_pred
 
+################ INPROCESSING
 
 def adversial_debiasing_train_and_predict(
     df,
@@ -203,6 +205,7 @@ def prejudice_remover_train_and_predict(
 
     return test_df, y_test, y_pred
 
+################ POSTPROCESSING
 def eq_odds_postprocessing_train_and_predict(
     df,
     train_idx,
@@ -257,3 +260,65 @@ def eq_odds_postprocessing_train_and_predict(
     y_pred_post = post_bld.labels.ravel()
 
     return test_df, y_test, y_pred_post
+
+def reject_option_classification_train_and_predict(
+    df,
+    train_idx,
+    test_idx,
+    feature_cols,
+    protected,
+    privileged_value,
+    unprivileged_value,
+    pipeline=None
+):
+    train_df = df.iloc[train_idx].reset_index(drop=True)
+    test_df  = df.iloc[test_idx].reset_index(drop=True)
+
+    X_train = train_df[feature_cols]
+    y_train = train_df['label'].values
+    X_test  = test_df[feature_cols]
+    y_test  = test_df['label'].values
+
+    pipeline = get_default_model_pipeline()
+    pipeline.fit(X_train, y_train)
+
+    y_train_pred = pipeline.predict(X_train)
+    y_test_pred  = pipeline.predict(X_test)
+
+    train_probs = pipeline.predict_proba(X_train)[:, 1].reshape(-1, 1)
+    test_probs  = pipeline.predict_proba(X_test)[:, 1].reshape(-1, 1)
+
+    train_bld = BinaryLabelDataset(
+        df=train_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+    test_bld = BinaryLabelDataset(
+        df=test_df,
+        label_names=['label'],
+        protected_attribute_names=[protected],
+        privileged_protected_attributes=[[privileged_value]],
+        unprivileged_protected_attributes=[[unprivileged_value]]
+    )
+
+    train_pred = train_bld.copy(deepcopy=True)
+    train_pred.labels = y_train_pred.reshape(-1, 1)
+    train_pred.scores = train_probs
+
+    test_pred = test_bld.copy(deepcopy=True)
+    test_pred.labels = y_test_pred.reshape(-1, 1)
+    test_pred.scores = test_probs
+
+    # Apply RejectOptionClassification with defaults
+    roc = RejectOptionClassification(
+        unprivileged_groups=[{protected: unprivileged_value}],
+        privileged_groups=[{protected: privileged_value}]
+        # all other parameters are left at their defaults
+    )
+    roc.fit(train_bld, train_pred)
+    post_bld = roc.predict(test_pred)
+    y_pred = post_bld.labels.ravel()
+
+    return test_df, y_test, y_pred
