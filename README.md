@@ -40,6 +40,7 @@ If you are interested in seeing the full thesis (Mitigating Algorithmic Bias in 
 
 ```bash
 pip install -r requirements.txt
+```
 
 ## Data Access 
 The datasets were pulled using AIF360 build in function, requiring the following downloads.
