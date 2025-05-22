@@ -156,7 +156,7 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
         ax.set_xlabel(label, fontsize=10)
 
     plt.subplots_adjust(left=0.05, right=0.95, top=0.90, bottom=0.1, hspace=0.4, wspace=0.3)
-    plt.show()
+    return plt.gcf()
 
 def compare_viz_metrics_2x3(df_base, df_mit,
                             label1='Baseline', label2='Mitigation',
@@ -246,8 +246,7 @@ def compare_viz_metrics_2x3(df_base, df_mit,
                     ha='left', va='center', color=BAND_BIAS, fontsize=8)
 
     plt.subplots_adjust(left=0.05, right=0.95, top=0.90, bottom=0.20, hspace=0.4, wspace=0.3)
-    plt.show()
-
+    return plt.gcf()
 
 def save_agg_metrics(dataset_name, mitigation_name,
                      race_agg_df, sex_agg_df,
