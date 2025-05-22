@@ -13,7 +13,7 @@ ALPHA_BAND = 0.4
 
 METRICS = ['accuracy', 'f1_score', 'SPD', 'DI', 'EOD', 'AOD']
 AGG_OUT_PATH = '../../reports/agg_metrics.csv'
-RAW_OUT_PATH = '../../reports/compas_raw_metrics.csv'
+RAW_OUT_PATH = '../../reports/raw_metrics.csv'
 KEYS = ['Dataset', 'Sensitive Attribute', 'Mitigation']
 
 DI_LO, DI_HI = 0.8, 1.25
@@ -266,7 +266,10 @@ def compare_viz_metrics_2x3(df_base, df_mit,
     )
     plt.show()
 
-def save_agg_metrics(dataset_name,mitigation_name, race_agg_df, sex_agg_df):
+
+def save_agg_metrics(dataset_name, mitigation_name,
+                     race_agg_df, sex_agg_df,
+                     pipeline_stage):
     agg_dfs = {'race': race_agg_df, 'sex': sex_agg_df}
     rows = []
     for attr, df in agg_dfs.items():
@@ -275,17 +278,19 @@ def save_agg_metrics(dataset_name,mitigation_name, race_agg_df, sex_agg_df):
         row = {
             'Dataset': dataset_name,
             'Sensitive Attribute': attr,
+            'Pipeline': pipeline_stage,
             'Mitigation': mitigation_name
         }
         for m in METRICS:
-            row[m]     = mean[m]
+            row[m]         = mean[m]
             row[f'{m}_std'] = std[m]
         rows.append(row)
     agg_df = pd.DataFrame(rows)
 
-    # logic to append if Mitigation + Sensitive Attribute doesnt exist, otherwise update metrics
+    # if the file exists, drop any old rows with the same (Mitigation, Sensitive Attribute)
     if os.path.exists(AGG_OUT_PATH):
         existing = pd.read_csv(AGG_OUT_PATH)
+        # Filter out duplicates on keys
         mask = existing.set_index(KEYS).index.isin(agg_df.set_index(KEYS).index)
         existing = existing[~mask]
         final = pd.concat([existing, agg_df], ignore_index=True)
@@ -294,25 +299,26 @@ def save_agg_metrics(dataset_name,mitigation_name, race_agg_df, sex_agg_df):
 
     final.to_csv(AGG_OUT_PATH, index=False)
 
-def save_raw_metrics(dataset_name, mitigation_name, race_agg_df, sex_agg_df):
-    raw_dfs = {
-        'race': race_agg_df,
-        'sex':  sex_agg_df
-    }
 
+def save_raw_metrics(dataset_name, mitigation_name,
+                     race_raw_df, sex_raw_df,
+                     pipeline_stage):
+    raw_dfs = {'race': race_raw_df, 'sex': sex_raw_df}
     raw_list = []
     for attr, df in raw_dfs.items():
         tmp = df.reset_index(drop=True).copy()
         tmp['Dataset'] = dataset_name
         tmp['Sensitive Attribute'] = attr
+        tmp['Pipeline'] = pipeline_stage
         tmp['Mitigation'] = mitigation_name
         raw_list.append(tmp)
-
     raw_df = pd.concat(raw_list, ignore_index=True)
-    front = KEYS
-    raw_df = raw_df[front + [c for c in raw_df.columns if c not in front]]
 
-    # if the file exists, drop any old rows with the same (Mitigation, Sensitive Attribute)
+    front = KEYS
+    cols = front + [c for c in raw_df.columns if c not in front]
+    raw_df = raw_df[cols]
+
+    # logic to append if Mitigation + Sensitive Attribute doesnt exist, otherwise update metrics
     if os.path.exists(RAW_OUT_PATH):
         existing = pd.read_csv(RAW_OUT_PATH)
         mask = existing.set_index(KEYS).index.isin(raw_df.set_index(KEYS).index)
