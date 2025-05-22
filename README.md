@@ -108,6 +108,8 @@ fig.savefig(out_path)
 fig.show()
 ```
 
+![Compas Preprocessing Reweighing](/reports/plots_compas/Compas_Preprocessing_Reweighing:_Baseline_-_Sex.png)
+
 ### Baseline Aggregates Exception
 All mitigation methods are compared against the dataset's baseline, the baseline results are saved as individual csv's for easy retrieval. This structure matches the structure expectyed by the plotting function.
 ```python
