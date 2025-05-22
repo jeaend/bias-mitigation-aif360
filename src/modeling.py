@@ -127,7 +127,8 @@ def adversial_debiasing_train_and_predict(
     scope_name='adv',
     num_epochs=50,
     batch_size=128,
-    adversary_loss_weight=0.1
+    adversary_loss_weight=0.1,
+    seed=42
 ):
     train_df = df.iloc[train_idx].reset_index(drop=True)
     test_df  = df.iloc[test_idx].reset_index(drop=True)
