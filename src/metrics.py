@@ -78,6 +78,10 @@ def compute_metrics(
     }
 
 def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
+    """
+    Plot 2x3 grid of metrics with conditional annotation for accuracy & F1.
+    If accuracy or F1 >= 0.75, label is placed inside the bar; otherwise above.
+    """
     titles  = [
         'Accuracy',
         'F1 Score',
@@ -123,7 +127,12 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
         if metric in ('accuracy','f1_score'):
             ax.axhline(1.0, color='black', linewidth=1)
             ax.bar([''], [m], yerr=[s], capsize=4, color=COL_BAR, width=bar_width)
-            ax.text(0, m+y_off, f"{m:.2f}\n±{s:.2f}", ha='center', va='bottom')
+            # conditional placement
+            if m >= 0.75:
+                y_text, va = m - y_off, 'top'
+            else:
+                y_text, va = m + y_off, 'bottom'
+            ax.text(0, y_text, f"{m:.2f}\n±{s:.2f}", ha='center', va=va)
         else:
             lo_f, hi_f = fair_bands[metric]
             ax.axhspan(lo_f, hi_f, color=BAND_FAIR, alpha=ALPHA_BAND)
@@ -136,9 +145,9 @@ def viz_metrics_2x3(metrics_dataframe_agg, label='Baseline', title=None):
             va = 'bottom' if m >= 0 else 'top'
             y_text = m + y_off if m >= 0 else m - y_off
             ax.text(0, y_text, f"{m:.2f}\n±{s:.2f}", ha='center', va=va)
-            ax.text(1.02, (lo_y+lo_f)/2, 'Bias\n(priv)', transform=ax.get_yaxis_transform(), ha='left', va='center', color=BAND_BIAS, fontsize=8)
-            ax.text(1.02, (lo_f+hi_f)/2, 'Fair', transform=ax.get_yaxis_transform(), ha='left', va='center', color=BAND_FAIR, fontsize=10)
-            ax.text(1.02, (hi_f+hi_y)/2, 'Bias\n(unpriv)', transform=ax.get_yaxis_transform(), ha='left', va='center', color=BAND_BIAS, fontsize=8)
+            ax.text(1.02,(lo_y+lo_f)/2,'Bias\n(priv)', transform=ax.get_yaxis_transform(), ha='left', va='center', color=BAND_BIAS, fontsize=8)
+            ax.text(1.02,(lo_f+hi_f)/2,'Fair', transform=ax.get_yaxis_transform(), ha='left', va='center', color=BAND_FAIR, fontsize=10)
+            ax.text(1.02,(hi_f+hi_y)/2,'Bias\n(unpriv)', transform=ax.get_yaxis_transform(), ha='left', va='center', color=BAND_BIAS, fontsize=8)
 
         ax.set_title(ttl, fontsize=12)
         ax.set_ylim(lo_y, hi_y)
@@ -158,79 +167,62 @@ def compare_viz_metrics_2x3(df_base, df_mit,
         'Average Odds\nDifference'
     ]
     fair_bands = {
-        'SPD': (-0.1, 0.1),
-        'DI':  (0.8, 1.25),
-        'EOD': (-0.1, 0.1),
-        'AOD': (-0.1, 0.1),
+        'SPD':(-0.1,0.1), 'DI':(0.8,1.25),
+        'EOD':(-0.1,0.1),'AOD':(-0.1,0.1)
     }
     ylims = {
-        'accuracy': (0.0, 1.0),
-        'f1_score': (0.0, 1.0),
-        'SPD':      (-1.0, 1.0),
-        'DI':       (0.0, 1.5),
-        'EOD':      (-1.0, 1.0),
-        'AOD':      (-1.0, 1.0),
+        'accuracy':(0.0,1.0),'f1_score':(0.0,1.0),
+        'SPD':(-1.0,1.0),'DI':(0.0,1.5),
+        'EOD':(-1.0,1.0),'AOD':(-1.0,1.0)
     }
     yticks = {
-        'accuracy': [0, 0.5, 0.75, 1.0],
-        'f1_score': [0, 0.5, 0.75, 1.0],
-        'SPD':      [-1, -0.1, 0.1, 1],
-        'DI':       [0, 0.8, 1.25, 1.5],
-        'EOD':      [-1, -0.1, 0.1, 1],
-        'AOD':      [-1, -0.1, 0.1, 1],
+        'accuracy':[0,0.5,0.75,1.0],'f1_score':[0,0.5,0.75,1.0],
+        'SPD':[-1,-0.1,0.1,1],'DI':[0,0.8,1.25,1.5],
+        'EOD':[-1,-0.1,0.1,1],'AOD':[-1,-0.1,0.1,1]
     }
 
-    fig, axes = plt.subplots(2, 3, figsize=(12, 8), sharey=False)
+    fig, axes = plt.subplots(2,3,figsize=(12,8), sharey=False)
     if title:
         fig.suptitle(title, x=0.5, y=0.98, ha='center', fontsize=14)
-
     axes = axes.flatten()
     bar_w = 0.4
     gap   = 0.05
-    x_pos = [-(bar_w/2 + gap/2), (bar_w/2 + gap/2)]
+    x_pos = [-(bar_w/2+gap/2), (bar_w/2+gap/2)]
 
     for ax, metric, ttl in zip(axes, METRICS, titles):
-        lo, hi = ylims[metric]
+        lo,hi = ylims[metric]
         ax.set_title(ttl)
         ax.set_ylim(lo, hi)
         ax.set_yticks(yticks[metric])
 
-        # fairness bands
-        if metric not in ('accuracy', 'f1_score'):
-            lf, hf = fair_bands[metric]
-            ax.axhspan(lf, hf, color=BAND_FAIR, alpha=ALPHA_BAND)
-            ax.axhspan(lo, lf, color=BAND_BIAS, alpha=ALPHA_BAND)
-            ax.axhspan(hf, hi, color=BAND_BIAS, alpha=ALPHA_BAND)
-            base_line = 1 if metric == 'DI' else 0
+        # plot fairness bands for non‐binary metrics
+        if metric not in ('accuracy','f1_score'):
+            lf,hf = fair_bands[metric]
+            ax.axhspan(lf,hf, color=BAND_FAIR, alpha=ALPHA_BAND)
+            ax.axhspan(lo,lf, color=BAND_BIAS, alpha=ALPHA_BAND)
+            ax.axhspan(hf,hi, color=BAND_BIAS, alpha=ALPHA_BAND)
+            base_line = 1 if metric=='DI' else 0
             ax.axhline(base_line, color='black')
 
-        # plot bars with error bars
-        mb, sb = df_base.loc['mean', metric], df_base.loc['std',  metric]
+        # draw bars
+        mb, sb = df_base.loc['mean', metric], df_base.loc['std', metric]
         mm, sm = df_mit.loc['mean',  metric], df_mit.loc['std', metric]
-        ax.bar(x_pos, [mb, mm], bar_w, yerr=[sb, sm], capsize=4,
-               color=[COL_BAR, COL_BAR])
+        ax.bar(x_pos, [mb, mm], bar_w, yerr=[sb, sm], capsize=4, color=[COL_BAR, COL_BAR])
 
-        # annotate each bar, moving inside if it would overlap the bar
+        # annotation logic
         axis_range = hi - lo
         y_off = 0.05 * axis_range
 
-        for xpos, val, err in zip(x_pos, [mb, mm], [sb, sm]):
-            if val >= 0:
-                # try placing above the error bar
-                y_try = val + err + y_off
-                if y_try <= hi:
-                    y_text, va = y_try, 'bottom'
-                else:
-                    # inside the bar, just below its top
+        for xpos, val, err in zip(x_pos, [mb,mm], [sb,sm]):
+            if metric in ('accuracy','f1_score'):
+                # ACC & F1: if high, label *inside* bar
+                if val >= 0.75:
                     y_text, va = val - y_off, 'top'
-            else:
-                # negative bar: try placing below the error bar tip
-                y_try = val - err - y_off
-                if y_try >= lo:
-                    y_text, va = y_try, 'top'
                 else:
-                    # inside the bar, just above its bottom edge
-                    y_text, va = val + y_off, 'bottom'
+                    y_text, va = val + err + y_off, 'bottom'
+            else:
+                # all other metrics: always above the error-bar tip
+                y_text, va = val + err + y_off, 'bottom'
 
             ax.text(
                 xpos, y_text,
@@ -238,32 +230,22 @@ def compare_viz_metrics_2x3(df_base, df_mit,
                 ha='center', va=va, fontsize=10
             )
 
-        # x-axis labels underneath
+        # x-axis labels
         ax.set_xticks(x_pos)
-        ax.set_xticklabels([label1, label2], fontsize=10)
+        ax.set_xticklabels([label1,label2], fontsize=10)
         ax.tick_params(axis='x', bottom=False, labelbottom=True)
 
-        # side labels for bias/fair regions
-        if metric not in ('accuracy', 'f1_score'):
-            lf, hf = fair_bands[metric]
-            ax.text(1.02, (lo+lf)/2,      'Bias\n(priv)',
-                    transform=ax.get_yaxis_transform(),
-                    ha='left', va='center',
-                    color=BAND_BIAS, fontsize=8)
-            ax.text(1.02, (lf+hf)/2,      'Fair',
-                    transform=ax.get_yaxis_transform(),
-                    ha='left', va='center',
-                    color=BAND_FAIR, fontsize=10)
-            ax.text(1.02, (hf+hi)/2,      'Bias\n(unpriv)',
-                    transform=ax.get_yaxis_transform(),
-                    ha='left', va='center',
-                    color=BAND_BIAS, fontsize=8)
+        # side bias/fairness labels
+        if metric not in ('accuracy','f1_score'):
+            lf,hf = fair_bands[metric]
+            ax.text(1.02, (lo+lf)/2, 'Bias\n(priv)', transform=ax.get_yaxis_transform(),
+                    ha='left', va='center', color=BAND_BIAS, fontsize=8)
+            ax.text(1.02, (lf+hf)/2, 'Fair', transform=ax.get_yaxis_transform(),
+                    ha='left', va='center', color=BAND_FAIR, fontsize=10)
+            ax.text(1.02, (hf+hi)/2, 'Bias\n(unpriv)', transform=ax.get_yaxis_transform(),
+                    ha='left', va='center', color=BAND_BIAS, fontsize=8)
 
-    plt.subplots_adjust(
-        left=0.05, right=0.95,
-        top=0.90, bottom=0.20,
-        hspace=0.4, wspace=0.3
-    )
+    plt.subplots_adjust(left=0.05, right=0.95, top=0.90, bottom=0.20, hspace=0.4, wspace=0.3)
     plt.show()
 
 
