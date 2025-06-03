@@ -2,7 +2,7 @@ import pandas as pd
 from aif360.datasets import AdultDataset, CompasDataset
 from src.data_preprocessing import preprocessing_adult, preprocessing_compas
 
-def load_adult_sex():
+def load_adult_sex(custom_preprocessing=preprocessing_adult):
     ad = AdultDataset(
         protected_attribute_names=['sex'],
         privileged_classes=[['Male']],
@@ -17,7 +17,7 @@ def load_adult_sex():
         ],
         features_to_drop=[''],
         instance_weights_name='fnlwgt',
-        custom_preprocessing=preprocessing_adult,
+        custom_preprocessing=custom_preprocessing,
         na_values=[]
     )
 
@@ -33,7 +33,7 @@ def load_adult_sex():
     return ad, df
 
 
-def load_adult_race():
+def load_adult_race(custom_preprocessing=preprocessing_adult):
     ad = AdultDataset(
         protected_attribute_names=['race'],
         privileged_classes=[['White']],
@@ -48,7 +48,7 @@ def load_adult_race():
         ],
         features_to_drop=[''],
         instance_weights_name='fnlwgt',
-        custom_preprocessing=preprocessing_adult,
+        custom_preprocessing=custom_preprocessing,
         na_values=[]
     )
 

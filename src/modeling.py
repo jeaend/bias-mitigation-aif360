@@ -4,7 +4,7 @@ from sklearn.linear_model import LogisticRegression
 import tensorflow.compat.v1 as tf
 from tensorflow.compat.v1 import reset_default_graph
 from aif360.algorithms.preprocessing import Reweighing, DisparateImpactRemover
-from aif360.algorithms.inprocessing import AdversarialDebiasing, PrejudiceRemover
+from aif360.algorithms.inprocessing import MetaFairClassifier, PrejudiceRemover
 from aif360.algorithms.postprocessing import EqOddsPostprocessing, RejectOptionClassification
 from aif360.datasets import BinaryLabelDataset
 import pandas as pd
@@ -86,6 +86,8 @@ def disparate_impact_remover_train_and_predict(
     train_bld = ds.subset(train_idx)
     test_bld  = ds.subset(test_idx)
 
+    ## implementation lacks a separate transform() call 
+    ## calling fit_transform() twice (once on train, once on test) ensures that each splits features are repaired independently, no data leakage
     direr_train = DisparateImpactRemover(
         repair_level=repair_level,
         sensitive_attribute=protected
@@ -114,45 +116,44 @@ def disparate_impact_remover_train_and_predict(
     return test_df, y_te, y_pred
 
 ################ INPROCESSING
+import numpy as np
 
-def adversial_debiasing_train_and_predict(
-    df,
-    train_idx,
-    test_idx,
-    protected,
-    privileged_value,
-    unprivileged_value,
-    privileged_groups,
-    unprivileged_groups,
-    scope_name='adv',
-    num_epochs=50,
-    batch_size=128,
-    adversary_loss_weight=0.1,
-    seed=42
+def meta_fair_classifier_train_and_predict(
+    df: pd.DataFrame,
+    train_idx: np.ndarray,
+    test_idx: np.ndarray,
+    protected: str,
+    privileged_value: float,
+    unprivileged_value: float,
+    favorable_label: float,
+    unfavorable_label: float
 ):
+    # 1) Split into train/test DataFrames (original, unscaled)
     train_df = df.iloc[train_idx].reset_index(drop=True)
     test_df  = df.iloc[test_idx].reset_index(drop=True)
 
-    # 2) Identify feature columns (exclude label & protected)
+    # 2) Identify feature columns (exclude 'label' and protected attr)
     feature_cols = [c for c in df.columns if c not in ('label', protected)]
 
-    # 3) Scale numeric features
-    scaler = RobustScaler()
+    # 3) Scale numeric features using RobustScaler
+    scaler     = RobustScaler()
     train_vals = scaler.fit_transform(train_df[feature_cols])
     test_vals  = scaler.transform(test_df[feature_cols])
 
-    # 4) Rebuild DataFrames for AIF360
+    # 4) Rebuild DataFrames for AIF360 (only protected, label, and scaled features)
     train_scaled = train_df[[protected, 'label']].copy().reset_index(drop=True)
     train_scaled[feature_cols] = train_vals
-    test_scaled  = test_df[[protected, 'label']].copy().reset_index(drop=True)
-    test_scaled[feature_cols]  = test_vals
 
+    test_scaled = test_df[[protected, 'label']].copy().reset_index(drop=True)
+    test_scaled[feature_cols] = test_vals
+
+    # 5) Wrap them as AIF360 BinaryLabelDataset objects
     train_bld = BinaryLabelDataset(
         df=train_scaled,
         label_names=['label'],
         protected_attribute_names=[protected],
-        favorable_label=1.0,
-        unfavorable_label=0.0,
+        favorable_label=favorable_label,
+        unfavorable_label=unfavorable_label,
         privileged_protected_attributes=[[privileged_value]],
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
@@ -160,33 +161,30 @@ def adversial_debiasing_train_and_predict(
         df=test_scaled,
         label_names=['label'],
         protected_attribute_names=[protected],
-        favorable_label=1.0,
-        unfavorable_label=0.0,
+        favorable_label=favorable_label,
+        unfavorable_label=unfavorable_label,
         privileged_protected_attributes=[[privileged_value]],
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
 
-    # 6) Train Adversarial Debiasing
-    reset_default_graph()
-    sess = tf.Session()
-    adv = AdversarialDebiasing(
-        privileged_groups=privileged_groups,
-        unprivileged_groups=unprivileged_groups,
-        scope_name=scope_name,
-        debias=True,
-        sess=sess,
-        num_epochs=num_epochs,
-        batch_size=batch_size,
-        adversary_loss_weight=adversary_loss_weight
+    # 6) Instantiate MetaFairClassifier with default tau = 0.5
+    mfc = MetaFairClassifier(
+        tau=0.5,
+        sensitive_attr=protected,
+        type='sr',   # 'sr' = statistical‐rate (demographic parity)
+        seed=42
     )
-    adv.fit(train_bld)
 
-    # 7) Predict & extract labels
-    pred_bld = adv.predict(test_bld)
-    y_test   = test_df['label'].values
-    y_pred   = pred_bld.labels.ravel()
+    # 7) Train on the AIF360 training dataset
+    mfc.fit(train_bld)
 
-    sess.close()
+    # 8) Predict on the AIF360 test dataset
+    pred_bld = mfc.predict(test_bld)
+
+    # 9) Extract true labels and predicted labels
+    y_test = test_df['label'].values
+    y_pred = pred_bld.labels.ravel()
+
     return test_df, y_test, y_pred
 
 def prejudice_remover_train_and_predict(
@@ -196,6 +194,8 @@ def prejudice_remover_train_and_predict(
     protected: str,
     privileged_value: float,
     unprivileged_value: float,
+    favorable_label,
+    unfavorable_label,
     eta: float = 25.0
 ):
     # 1) Split raw DataFrame
@@ -223,6 +223,8 @@ def prejudice_remover_train_and_predict(
         df=train_scaled_df,
         label_names=['label'],
         protected_attribute_names=[protected],
+        favorable_label=favorable_label,
+        unfavorable_label=unfavorable_label,
         privileged_protected_attributes=[[privileged_value]],
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
@@ -230,6 +232,8 @@ def prejudice_remover_train_and_predict(
         df=test_scaled_df,
         label_names=['label'],
         protected_attribute_names=[protected],
+        favorable_label=favorable_label,
+        unfavorable_label=unfavorable_label,
         privileged_protected_attributes=[[privileged_value]],
         unprivileged_protected_attributes=[[unprivileged_value]]
     )
@@ -244,6 +248,8 @@ def prejudice_remover_train_and_predict(
     y_pred = pred_bld.labels.ravel()
 
     return test_df, y_test, y_pred
+
+
 
 ################ POSTPROCESSING
 def eq_odds_postprocessing_train_and_predict(
