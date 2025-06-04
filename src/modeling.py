@@ -1,13 +1,12 @@
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import RobustScaler
 from sklearn.linear_model import LogisticRegression
-import tensorflow.compat.v1 as tf
-from tensorflow.compat.v1 import reset_default_graph
 from aif360.algorithms.preprocessing import Reweighing, DisparateImpactRemover
 from aif360.algorithms.inprocessing import MetaFairClassifier, PrejudiceRemover
 from aif360.algorithms.postprocessing import EqOddsPostprocessing, RejectOptionClassification
 from aif360.datasets import BinaryLabelDataset
 import pandas as pd
+import numpy as np
 
 def get_default_model_pipeline():
     return Pipeline([
@@ -43,7 +42,6 @@ def reweighing_train_and_predict(
     protected,
     privileged_value,
     unprivileged_value,
-    pipeline=None
 ):
     train_bld = ds.subset(train_idx)
     test_bld  = ds.subset(test_idx)
@@ -66,8 +64,7 @@ def reweighing_train_and_predict(
     # Train with sample_weight
     ## Adult: w_tr = fnlwgt × reweigh_factor
     ## COMPAS: w_tr = 1 × reweigh_factor (1 is default when weight not explicily set)
-    if pipeline is None:
-        pipeline = get_default_model_pipeline()
+    pipeline = get_default_model_pipeline()
     pipeline.fit(X_tr, y_tr, clf__sample_weight=w_tr)
 
     y_pred = pipeline.predict(X_te)
@@ -80,8 +77,7 @@ def disparate_impact_remover_train_and_predict(
     train_idx,
     test_idx,
     protected,
-    repair_level=1.0,
-    pipeline=None
+    repair_level=1.0
 ):
     train_bld = ds.subset(train_idx)
     test_bld  = ds.subset(test_idx)
@@ -106,8 +102,7 @@ def disparate_impact_remover_train_and_predict(
     X_te = test_transf.features
     y_te = test_transf.labels.ravel()
 
-    if pipeline is None:
-        pipeline = get_default_model_pipeline()
+    pipeline = get_default_model_pipeline()
     pipeline.fit(X_tr, y_tr)
 
     y_pred = pipeline.predict(X_te)
@@ -116,8 +111,6 @@ def disparate_impact_remover_train_and_predict(
     return test_df, y_te, y_pred
 
 ################ INPROCESSING
-import numpy as np
-
 def meta_fair_classifier_train_and_predict(
     df: pd.DataFrame,
     train_idx: np.ndarray,
@@ -169,7 +162,7 @@ def meta_fair_classifier_train_and_predict(
 
     # 6) Instantiate MetaFairClassifier with default tau = 0.5
     mfc = MetaFairClassifier(
-        tau=0.5,
+        tau=0.5, 
         sensitive_attr=protected,
         type='sr',   # 'sr' = statistical‐rate (demographic parity)
         seed=42
@@ -239,7 +232,10 @@ def prejudice_remover_train_and_predict(
     )
 
     # 6) Train PrejudiceRemover (in-processing)
-    pr = PrejudiceRemover(eta=eta, sensitive_attr=protected)
+    pr = PrejudiceRemover(
+        eta=eta, 
+        sensitive_attr=protected
+    )
     pr = pr.fit(train_bld)
 
     pred_bld = pr.predict(test_bld)
@@ -314,8 +310,7 @@ def reject_option_classification_train_and_predict(
     feature_cols,
     protected,
     privileged_value,
-    unprivileged_value,
-    pipeline=None
+    unprivileged_value
 ):
     train_df = df.iloc[train_idx].reset_index(drop=True)
     test_df  = df.iloc[test_idx].reset_index(drop=True)
@@ -361,7 +356,6 @@ def reject_option_classification_train_and_predict(
     roc = RejectOptionClassification(
         unprivileged_groups=[{protected: unprivileged_value}],
         privileged_groups=[{protected: privileged_value}]
-        # all other parameters are left at their defaults
     )
     roc.fit(train_bld, train_pred)
     post_bld = roc.predict(test_pred)
