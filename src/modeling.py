@@ -65,7 +65,7 @@ def reweighing_train_and_predict(ds,df,train_idx,test_idx,protected,privileged_v
 
     return test_df, y_te, y_pred
 
-def disparate_impact_remover_train_and_predict(ds,df,train_idx,test_idx,protected,repair_level=1.0):
+def disparate_impact_remover_train_and_predict(ds,df,train_idx,test_idx,protected):
     # PREPARE DATA
     train_bld = ds.subset(train_idx)
     test_bld  = ds.subset(test_idx)
@@ -74,13 +74,13 @@ def disparate_impact_remover_train_and_predict(ds,df,train_idx,test_idx,protecte
     ## calling fit_transform() twice (once on train, once on test) 
     ## ensures that each splits features are repaired independently, no data leakage
     direr_train = DisparateImpactRemover(
-        repair_level=repair_level,
+        repair_level=1.0,
         sensitive_attribute=protected
     )
     train_transf = direr_train.fit_transform(train_bld)
 
     direr_test = DisparateImpactRemover(
-        repair_level=repair_level,
+        repair_level=1.0,
         sensitive_attribute=protected
     )
     test_transf = direr_test.fit_transform(test_bld)
@@ -155,7 +155,7 @@ def meta_fair_classifier_train_and_predict(df: pd.DataFrame,train_idx: np.ndarra
 
     return test_df, y_test, y_pred
 
-def prejudice_remover_train_and_predict(df,train_idx,test_idx,protected: str,privileged_value: float,unprivileged_value: float,favorable_label,unfavorable_label,eta: float = 25.0):
+def prejudice_remover_train_and_predict(df,train_idx,test_idx,protected: str,privileged_value: float,unprivileged_value: float,favorable_label,unfavorable_label):
     # PREPARE DATA
     train_df = df.iloc[train_idx].reset_index(drop=True)
     test_df  = df.iloc[test_idx].reset_index(drop=True)
@@ -197,7 +197,7 @@ def prejudice_remover_train_and_predict(df,train_idx,test_idx,protected: str,pri
 
     # TRAIN MODEL 
     pr = PrejudiceRemover(
-        eta=eta, 
+        eta=25.0, 
         sensitive_attr=protected
     )
     pr = pr.fit(train_bld)
@@ -210,7 +210,7 @@ def prejudice_remover_train_and_predict(df,train_idx,test_idx,protected: str,pri
     return test_df, y_test, y_pred
 
 ################ POSTPROCESSING
-def eq_odds_postprocessing_train_and_predict(df,train_idx,test_idx,protected: str,privileged_value: float,unprivileged_value: float,seed: int = 42):
+def eq_odds_postprocessing_train_and_predict(df,train_idx,test_idx,protected: str,privileged_value: float,unprivileged_value: float):
     # PREPARE DATA
     train_df = df.iloc[train_idx].reset_index(drop=True)
     test_df  = df.iloc[test_idx].reset_index(drop=True)
@@ -251,7 +251,7 @@ def eq_odds_postprocessing_train_and_predict(df,train_idx,test_idx,protected: st
     eq = EqOddsPostprocessing(
         privileged_groups=[{protected: privileged_value}],
         unprivileged_groups=[{protected: unprivileged_value}],
-        seed=seed
+        seed=42
     )
     eq = eq.fit(train_bld, train_pred)
 
