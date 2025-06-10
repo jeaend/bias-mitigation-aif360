@@ -1,6 +1,16 @@
 import pandas as pd
 from scipy.stats import wilcoxon
 
+def significance_strength_symbol(p):
+        if p < 0.001:
+            return '***'
+        elif p < 0.01:
+            return '**'
+        elif p < 0.05:
+            return '*'
+        else:
+            return ''
+    
 def perform_wilcoxon(df): 
     # 1) Count dataset-attribute-method combinations, excluded baseline
     combos = []
@@ -43,6 +53,9 @@ def perform_wilcoxon(df):
     res_df['p_adj'] = (res_df['p-value'] * len(METRICS)).clip(upper=1.0)
     res_df['p-value'] = res_df['p-value'].round(3)
     res_df['p_adj'] = res_df['p_adj'].round(3)
+    res_df['significant'] = res_df['p_adj'] < 0.05
+    res_df['significance'] = res_df['p_adj'].apply(significance_strength_symbol)
+
     print(f"Performed {len(res_df)} Wilcoxon tests (6 metrics × {len(combo_df)} combos = {len(res_df)}).")
     
     return res_df
