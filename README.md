@@ -22,6 +22,7 @@ If you are interested in seeing the full thesis (Mitigating Algorithmic Bias in 
   * `data_loading.py`: load and preprocess the datasets
   * `metrics.py`: compute fairness metrics (SPD, DI, EOD, AOD) and performance metrics (accuracy, F1-score), visualize and save metrics
   * `modeling.py`: orchestrate training and evaluation across pipeline stages (baseline + mitigation methods)
+  * `statistical_testins.py`: performs wilcoxon test between baseline and mitigation methods
 
 * **reports/**
   Directory for output figures (`plots_*`)  divided by datasets and CSV results (`baseline_agg/`)
