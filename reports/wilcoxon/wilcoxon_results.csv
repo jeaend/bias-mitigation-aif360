@@ -1,0 +1,23 @@
+Method,Pipeline,Dataset,Attribute,W_AOD,W_DI,W_EOD,W_SPD,W_accuracy,W_f1_score,p-value_AOD,p-value_DI,p-value_EOD,p-value_SPD,p-value_accuracy,p-value_f1_score,p_adj_AOD,p_adj_DI,p_adj_EOD,p_adj_SPD,p_adj_accuracy,p_adj_f1_score,significance_AOD,significance_DI,significance_EOD,significance_SPD,significance_accuracy,significance_f1_score
+disparate impact remover,preprocessing,adult,race,1.0,1.0,1.0,8.0,81.0,151.0,0.0,0.0,0.0,0.0,0.027,0.771,0.0,0.0,0.0,0.0,0.165,1.0,***,***,***,***,,
+disparate impact remover,preprocessing,adult,sex,27.0,18.0,22.0,45.0,33.0,13.0,0.0,0.0,0.0,0.001,0.0,0.0,0.0,0.0,0.0,0.005,0.001,0.0,***,***,***,**,**,***
+disparate impact remover,preprocessing,compas,race,3.0,9.0,0.0,3.0,33.0,6.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.001,0.0,***,***,***,***,**,***
+disparate impact remover,preprocessing,compas,sex,3.0,1.0,2.0,3.0,23.0,17.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+equalized odds postprocessing,postprocessing,adult,race,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+equalized odds postprocessing,postprocessing,adult,sex,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+equalized odds postprocessing,postprocessing,compas,race,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+equalized odds postprocessing,postprocessing,compas,sex,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+meta fair classifier,inprocessing,adult,race,10.0,60.0,13.0,6.0,0.0,8.0,0.0,0.005,0.0,0.0,0.0,0.0,0.0,0.028,0.0,0.0,0.0,0.0,***,*,***,***,***,***
+meta fair classifier,inprocessing,adult,sex,9.0,0.0,39.0,0.0,0.0,32.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.003,0.0,0.0,0.001,***,***,**,***,***,**
+prejudice remover,inprocessing,adult,race,8.0,0.0,13.0,1.0,111.5,160.0,0.0,0.0,0.0,0.0,0.271,0.958,0.0,0.0,0.001,0.0,1.0,1.0,***,***,**,***,,
+prejudice remover,inprocessing,adult,sex,16.0,21.0,16.0,14.0,156.0,81.0,0.0,0.0,0.0,0.0,0.874,0.027,0.0,0.0,0.0,0.0,1.0,0.165,***,***,***,***,,
+prejudice remover,inprocessing,compas,race,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+prejudice remover,inprocessing,compas,sex,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+reject option classification,postprocessing,adult,race,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+reject option classification,postprocessing,adult,sex,0.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+reject option classification,postprocessing,compas,race,0.0,0.0,0.0,0.0,13.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+reject option classification,postprocessing,compas,sex,0.0,0.0,0.0,0.0,7.5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+reweighing,preprocessing,adult,race,0.0,0.0,0.0,0.0,107.0,83.0,0.0,0.0,0.0,0.0,0.141,0.032,0.0,0.0,0.0,0.0,0.845,0.191,***,***,***,***,,
+reweighing,preprocessing,adult,sex,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+reweighing,preprocessing,compas,race,0.0,0.0,0.0,0.0,10.0,2.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,***,***,***,***,***,***
+reweighing,preprocessing,compas,sex,0.0,0.0,0.0,0.0,41.5,22.0,0.0,0.0,0.0,0.0,0.001,0.0,0.0,0.0,0.0,0.0,0.004,0.0,***,***,***,***,**,***
