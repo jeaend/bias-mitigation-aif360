@@ -14,7 +14,7 @@ If you are interested in seeing the full thesis (Mitigating Algorithmic Bias in 
 ## Project Structure
 
 * **notebooks/**
-  Jupyter notebooks for exploration and demonstration of baseline models, mitigation approaches, metrics, divided by datasets
+  Jupyter notebooks for exploration and demonstration of baseline models, mitigation approaches, metrics, divided by datasets. Also contains statistical testing and questionnaire notebook.
 
 * **src/**
   Four Python modules:
