@@ -4,7 +4,7 @@ As part of my Master’s thesis, this project conducts a comprehensive comparati
 
 It applies selected techniques of each pipeline stage:
 - **Pre-processing**: Reweighing, Disparate Impact Remover 
-- **In-processing**: Adversarial Debiasing, Prejudice Remover  
+- **In-processing**: Meta Fair Classifier, Prejudice Remover  
 - **Post-processing**: Equalized Odds Postprocessing, Reject Option Classification
 
 These methods are applied to the UCI Adult Income and ProPublica COMPAS recidivism datasets. For each configuration, the project computes both fairness metrics (Statistical Parity Difference, Disparate Impact, Equal Opportunity Difference, Average Odds Difference) and performance metrics (accuracy, F1-score), generates visual comparisons, and saves reproducible outputs for downstream analysis.
